@@ -3,6 +3,8 @@ import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import type { AppRole } from '@/types/supabase';
 
+// Define a minimal profile shape.  Extend this when additional
+// columns are added to the `profiles` table.
 type UserProfile = {
   id: string;
   user_id: string;
@@ -26,7 +28,7 @@ type AuthContextType = {
     firstName: string,
     lastName: string,
     role?: AppRole,
-    schoolId?: string | null
+    schoolId?: string | null,
   ) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   hasRole: (role: AppRole) => boolean;
@@ -49,19 +51,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .select('*')
       .eq('user_id', userId)
       .maybeSingle();
-
     if (profileError) {
       console.error('Error fetching profile:', profileError);
       setProfile(null);
     } else {
       setProfile(profileData as UserProfile | null);
     }
-
     const { data: rolesData, error: rolesError } = await supabase
       .from('user_roles')
       .select('role')
       .eq('user_id', userId);
-
     if (rolesError) {
       console.error('Error fetching roles:', rolesError);
       setRoles([]);
@@ -75,7 +74,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(true);
       setSession(currentSession);
       setUser(currentSession?.user ?? null);
-
       if (currentSession?.user) {
         await fetchUserData(currentSession.user.id);
       } else {
@@ -95,22 +93,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let mounted = true;
-
     const bootstrap = async () => {
       try {
         setIsLoading(true);
-
         const {
           data: { session: currentSession },
           error,
         } = await supabase.auth.getSession();
-
         if (error) {
           console.error('Error getting session:', error);
         }
-
         if (!mounted) return;
-
         await loadSessionAndUser(currentSession);
       } catch (error) {
         console.error('Bootstrap auth error:', error);
@@ -122,21 +115,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setIsLoading(false);
       }
     };
-
     bootstrap();
-
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, newSession) => {
       if (!mounted) return;
-
-      // Importante: no hacer await directo aquí
+      // Delay loading session to ensure supabase state is updated
       setTimeout(() => {
         if (!mounted) return;
         loadSessionAndUser(newSession);
       }, 0);
     });
-
     return () => {
       mounted = false;
       subscription.unsubscribe();
@@ -147,14 +136,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     return { error: error ?? null };
   };
-
   const signUp = async (
     email: string,
     password: string,
     firstName: string,
     lastName: string,
     role: AppRole = 'alumno',
-    schoolId: string | null = null
+    schoolId: string | null = null,
   ) => {
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -167,13 +155,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         },
       },
     });
-
     if (error || !data.user) {
       return { error: error ?? new Error('No se pudo crear la cuenta') };
     }
-
     const userId = data.user.id;
-
     const { error: profileErr } = await supabase.from('profiles').upsert(
       {
         user_id: userId,
@@ -182,11 +167,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         last_name: lastName,
         school_id: schoolId,
       },
-      { onConflict: 'user_id' }
+      { onConflict: 'user_id' },
     );
-
     if (profileErr) return { error: profileErr as unknown as Error };
-
     if (schoolId) {
       const { error: roleErr } = await supabase.from('user_roles').upsert(
         {
@@ -194,15 +177,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           school_id: schoolId,
           role,
         },
-        { onConflict: 'user_id,school_id,role' }
+        { onConflict: 'user_id,school_id,role' },
       );
-
       if (roleErr) return { error: roleErr as unknown as Error };
     }
-
     return { error: null };
   };
-
   const signOut = async () => {
     await supabase.auth.signOut();
     setUser(null);
@@ -210,17 +190,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setProfile(null);
     setRoles([]);
   };
-
   const hasRole = (role: AppRole) => roles.includes(role);
-
   const isAdmin = useMemo(() => {
     return roles.includes('super_admin') || roles.includes('directivo');
   }, [roles]);
-
   const isStaff = useMemo(() => {
     return isAdmin || roles.includes('administrativo');
   }, [isAdmin, roles]);
-
   return (
     <AuthContext.Provider
       value={{
