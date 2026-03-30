@@ -1,37 +1,38 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import type { User, Session } from '@supabase/supabase-js';
+import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
-import type { AppRole, UserProfile } from '@/types/database';
+import type { AppRole } from '@/types/supabase';
 
-type SignInResult = { error: Error | null };
-type SignUpResult = { error: Error | null };
+type UserProfile = {
+  id: string;
+  user_id: string;
+  email: string;
+  first_name: string | null;
+  last_name: string | null;
+  school_id: string | null;
+  created_at: string;
+};
 
-// ✅ Switch de rol (modo demo)
-const DEV_ROLE_LS_KEY = "eduflow:devRoleOverride";
-
-interface AuthContextType {
+type AuthContextType = {
   user: User | null;
   session: Session | null;
   profile: UserProfile | null;
   roles: AppRole[];
   isLoading: boolean;
-
-  signIn: (email: string, password: string) => Promise<SignInResult>;
-
+  signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (
     email: string,
     password: string,
     firstName: string,
     lastName: string,
-    role?: AppRole
-  ) => Promise<SignUpResult>;
-
+    role?: AppRole,
+    schoolId?: string | null
+  ) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
-
   hasRole: (role: AppRole) => boolean;
   isAdmin: boolean;
   isStaff: boolean;
-}
+};
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -43,113 +44,118 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchUserData = async (userId: string) => {
-    try {
-      // Perfil
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('user_id', userId)
-        .maybeSingle();
+    const { data: profileData, error: profileError } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('user_id', userId)
+      .maybeSingle();
 
-      if (profileError) {
-        console.error('Error fetching profile:', profileError);
-      } else if (profileData) {
-        setProfile(profileData as UserProfile);
+    if (profileError) {
+      console.error('Error fetching profile:', profileError);
+      setProfile(null);
+    } else {
+      setProfile(profileData as UserProfile | null);
+    }
+
+    const { data: rolesData, error: rolesError } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', userId);
+
+    if (rolesError) {
+      console.error('Error fetching roles:', rolesError);
+      setRoles([]);
+    } else {
+      setRoles((rolesData ?? []).map((r) => r.role as AppRole));
+    }
+  };
+
+  const loadSessionAndUser = async (currentSession: Session | null) => {
+    try {
+      setIsLoading(true);
+      setSession(currentSession);
+      setUser(currentSession?.user ?? null);
+
+      if (currentSession?.user) {
+        await fetchUserData(currentSession.user.id);
       } else {
         setProfile(null);
-      }
-
-      // Roles
-      const { data: rolesData, error: rolesError } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', userId);
-
-      if (rolesError) {
-        console.error('Error fetching roles:', rolesError);
         setRoles([]);
-      } else {
-        const realRoles = (rolesData ?? []).map((r) => r.role as AppRole);
-
-        // ✅ Override sólo en DEV (modo demo)
-        if (import.meta.env.DEV) {
-          const override = localStorage.getItem(DEV_ROLE_LS_KEY) as AppRole | null;
-          if (override) {
-            setRoles([override]); // fuerza un solo rol simulado
-            return;
-          }
-        }
-
-        setRoles(realRoles);
       }
     } catch (error) {
-      console.error('Error fetching user data:', error);
+      console.error('loadSessionAndUser error:', error);
+      setSession(null);
+      setUser(null);
       setProfile(null);
       setRoles([]);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    // Listener de auth primero
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
-      setSession(newSession);
-      setUser(newSession?.user ?? null);
+    let mounted = true;
 
-      if (newSession?.user) {
-        setTimeout(() => {
-          fetchUserData(newSession.user.id);
-        }, 0);
-      } else {
-        setProfile(null);
-        setRoles([]);
-      }
+    const bootstrap = async () => {
+      try {
+        setIsLoading(true);
 
-      setIsLoading(false);
-    });
+        const {
+          data: { session: currentSession },
+          error,
+        } = await supabase.auth.getSession();
 
-    // Luego revisar sesión existente
-    supabase.auth
-      .getSession()
-      .then(({ data: { session: existingSession } }) => {
-        setSession(existingSession);
-        setUser(existingSession?.user ?? null);
-
-        if (existingSession?.user) {
-          fetchUserData(existingSession.user.id);
-        } else {
-          setProfile(null);
-          setRoles([]);
+        if (error) {
+          console.error('Error getting session:', error);
         }
 
-        setIsLoading(false);
-      })
-      .catch((e) => {
-        console.error('Error getting session:', e);
-        setIsLoading(false);
-      });
+        if (!mounted) return;
 
-    return () => subscription.unsubscribe();
+        await loadSessionAndUser(currentSession);
+      } catch (error) {
+        console.error('Bootstrap auth error:', error);
+        if (!mounted) return;
+        setSession(null);
+        setUser(null);
+        setProfile(null);
+        setRoles([]);
+        setIsLoading(false);
+      }
+    };
+
+    bootstrap();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      if (!mounted) return;
+
+      // Importante: no hacer await directo aquí
+      setTimeout(() => {
+        if (!mounted) return;
+        loadSessionAndUser(newSession);
+      }, 0);
+    });
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
-  const signIn = async (email: string, password: string): Promise<SignInResult> => {
+  const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-    return { error: (error as Error) ?? null };
+    return { error: error ?? null };
   };
 
-  // ✅ Registro robusto:
-  // - signUp en auth
-  // - upsert en profiles (evita duplicate key)
-  // - upsert en user_roles (evita duplicate key)
-  // - fallback: si el email ya existe, intenta signIn automático
   const signUp = async (
     email: string,
     password: string,
     firstName: string,
     lastName: string,
-    role: AppRole = 'alumno'
-  ): Promise<SignUpResult> => {
+    role: AppRole = 'alumno',
+    schoolId: string | null = null
+  ) => {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -162,48 +168,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       },
     });
 
-    // 🔁 Si el usuario ya existe o hubo un error típico de signup,
-    // intentamos iniciar sesión (muy útil en demos después de varios intentos).
     if (error || !data.user) {
-      // Intento de fallback a signIn
-      const { error: signInErr } = await supabase.auth.signInWithPassword({ email, password });
-      if (!signInErr) {
-        return { error: null };
-      }
-      return { error: (error as Error) ?? (signInErr as Error) ?? new Error('No se pudo crear el usuario') };
+      return { error: error ?? new Error('No se pudo crear la cuenta') };
     }
 
     const userId = data.user.id;
 
-    // 1) profiles (upsert para evitar duplicate key)
-    const { error: profileErr } = await supabase
-      .from('profiles')
-      .upsert(
+    const { error: profileErr } = await supabase.from('profiles').upsert(
+      {
+        user_id: userId,
+        email,
+        first_name: firstName,
+        last_name: lastName,
+        school_id: schoolId,
+      },
+      { onConflict: 'user_id' }
+    );
+
+    if (profileErr) return { error: profileErr as unknown as Error };
+
+    if (schoolId) {
+      const { error: roleErr } = await supabase.from('user_roles').upsert(
         {
           user_id: userId,
-          email,
-          first_name: firstName,
-          last_name: lastName,
+          school_id: schoolId,
+          role,
         },
-        { onConflict: 'user_id' }
+        { onConflict: 'user_id,school_id,role' }
       );
 
-    if (profileErr) {
-      return { error: profileErr as unknown as Error };
-    }
-
-    // 2) user_roles (upsert)
-    // Nota: la tabla usualmente permite múltiples roles por usuario, por eso usamos user_id,role.
-    // Si tu tabla sólo permite 1 rol por usuario, cambia onConflict a 'user_id'.
-    const { error: roleErr } = await supabase
-      .from('user_roles')
-      .upsert(
-        { user_id: userId, role },
-        { onConflict: 'user_id,role' }
-      );
-
-    if (roleErr) {
-      return { error: roleErr as unknown as Error };
+      if (roleErr) return { error: roleErr as unknown as Error };
     }
 
     return { error: null };
@@ -219,36 +213,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const hasRole = (role: AppRole) => roles.includes(role);
 
-  const isAdmin = useMemo(
-    () => roles.includes('super_admin') || roles.includes('directivo'),
-    [roles]
+  const isAdmin = useMemo(() => {
+    return roles.includes('super_admin') || roles.includes('directivo');
+  }, [roles]);
+
+  const isStaff = useMemo(() => {
+    return isAdmin || roles.includes('administrativo');
+  }, [isAdmin, roles]);
+
+  return (
+    <AuthContext.Provider
+      value={{
+        user,
+        session,
+        profile,
+        roles,
+        isLoading,
+        signIn,
+        signUp,
+        signOut,
+        hasRole,
+        isAdmin,
+        isStaff,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
   );
-
-  const isStaff = useMemo(
-    () => isAdmin || roles.includes('administrativo'),
-    [roles, isAdmin]
-  );
-
-  const value: AuthContextType = {
-    user,
-    session,
-    profile,
-    roles,
-    isLoading,
-    signIn,
-    signUp,
-    signOut,
-    hasRole,
-    isAdmin,
-    isStaff,
-  };
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (context === undefined) {
+  if (!context) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
