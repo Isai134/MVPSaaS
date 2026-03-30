@@ -13,6 +13,9 @@ import Grades from "./pages/Grades";
 import NotFound from "./pages/NotFound";
 import SignUp from './pages/SignUp';
 import DevRole from "./pages/DevRole";
+import Documents from "./pages/Documents";
+import Announcements from "./pages/Announcements";
+import Profile from "./pages/Profile";
 
 const queryClient = new QueryClient();
 
@@ -33,6 +36,23 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   }
 
   return <>{children}</>;
+}
+
+// Coming Soon placeholder component
+import { AppLayout } from './components/layout/AppLayout';
+
+function ComingSoon({ title }: { title: string }) {
+  return (
+    <AppLayout title={title}>
+      <div className="flex flex-col items-center justify-center py-20">
+        <div className="text-6xl mb-4">🚧</div>
+        <h2 className="text-2xl font-bold mb-2">Próximamente</h2>
+        <p className="text-muted-foreground">
+          Esta sección estará disponible pronto.
+        </p>
+      </div>
+    </AppLayout>
+  );
 }
 
 // App Routes Component
@@ -79,15 +99,33 @@ function AppRoutes() {
         }
       />
 
-      {/* Placeholder routes */}
+      {/* New implemented pages */}
       <Route
         path="/documents"
         element={
           <ProtectedRoute>
-            <ComingSoon title="Documentos" />
+            <Documents />
           </ProtectedRoute>
         }
       />
+      <Route
+        path="/announcements"
+        element={
+          <ProtectedRoute>
+            <Announcements />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/profile"
+        element={
+          <ProtectedRoute>
+            <Profile />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Placeholder routes for features not yet implemented */}
       <Route
         path="/subjects"
         element={
@@ -101,14 +139,6 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <ComingSoon title="Reportes" />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/announcements"
-        element={
-          <ProtectedRoute>
-            <ComingSoon title="Avisos" />
           </ProtectedRoute>
         }
       />
@@ -128,36 +158,10 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       />
-      <Route
-        path="/profile"
-        element={
-          <ProtectedRoute>
-            <ComingSoon title="Mi Perfil" />
-          </ProtectedRoute>
-        }
-      />
 
       {/* Catch all */}
       <Route path="*" element={<NotFound />} />
     </Routes>
-  );
-}
-
-
-// Coming Soon placeholder component
-import { AppLayout } from './components/layout/AppLayout';
-
-function ComingSoon({ title }: { title: string }) {
-  return (
-    <AppLayout title={title}>
-      <div className="flex flex-col items-center justify-center py-20">
-        <div className="text-6xl mb-4">🚧</div>
-        <h2 className="text-2xl font-bold mb-2">Próximamente</h2>
-        <p className="text-muted-foreground">
-          Esta sección estará disponible pronto.
-        </p>
-      </div>
-    </AppLayout>
   );
 }
 
