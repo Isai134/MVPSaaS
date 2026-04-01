@@ -10,7 +10,9 @@ import {
   Trophy,
   Megaphone,
   User,
-  LogOut
+  LogOut,
+  Calendar,
+  CalendarClock,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import type { AppRole } from '@/types/supabase';
@@ -26,7 +28,8 @@ const sidebarItems: SidebarItem[] = [
   {
     label: 'Panel',
     to: '/dashboard',
-    roles: ['super_admin', 'directivo', 'administrativo', 'profesor', 'alumno', 'padre'],
+    // El panel debe ser visible solo para administradores y superiores
+    roles: ['super_admin', 'directivo', 'administrativo'],
     icon: LayoutDashboard,
   },
   {
@@ -76,6 +79,20 @@ const sidebarItems: SidebarItem[] = [
     to: '/profile',
     roles: ['super_admin', 'directivo', 'administrativo', 'profesor', 'alumno', 'padre'],
     icon: User,
+  },
+  // Nuevo item de horario accesible solo por administradores
+  {
+    label: 'Horario',
+    to: '/schedule',
+    roles: ['super_admin', 'directivo', 'administrativo'],
+    icon: CalendarClock,
+  },
+  // Calendario escolar accesible solo por administradores
+  {
+    label: 'Calendario escolar',
+    to: '/calendar',
+    roles: ['super_admin', 'directivo', 'administrativo'],
+    icon: Calendar,
   },
 ];
 

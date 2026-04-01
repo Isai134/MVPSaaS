@@ -20,6 +20,8 @@ import Subjects from '@/pages/Subjects';
 import TeacherGrades from '@/pages/TeacherGrades';
 import StudentGrades from '@/pages/StudentGrades';
 import Announcements from '@/pages/Announcements';
+import Schedule from '@/pages/Schedule';
+import SchoolCalendar from '@/pages/SchoolCalendar';
 
 function LoadingScreen() {
   return <p className="p-4">Cargando…</p>;
@@ -89,20 +91,11 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       >
-        {/* Dashboard: todos los roles */}
+        {/* Dashboard: accesible solo para administradores y superiores */}
         <Route
           path="/dashboard"
           element={
-            <RoleRoute
-              allowedRoles={[
-                'super_admin',
-                'directivo',
-                'administrativo',
-                'profesor',
-                'alumno',
-                'padre',
-              ]}
-            >
+            <RoleRoute allowedRoles={['super_admin', 'directivo', 'administrativo']}>
               <Dashboard />
             </RoleRoute>
           }
@@ -112,9 +105,7 @@ function AppRoutes() {
         <Route
           path="/students"
           element={
-            <RoleRoute
-              allowedRoles={['super_admin', 'directivo', 'administrativo']}
-            >
+            <RoleRoute allowedRoles={['super_admin', 'directivo', 'administrativo']}>
               <Students />
             </RoleRoute>
           }
@@ -124,9 +115,7 @@ function AppRoutes() {
         <Route
           path="/payments"
           element={
-            <RoleRoute
-              allowedRoles={['super_admin', 'directivo', 'administrativo']}
-            >
+            <RoleRoute allowedRoles={['super_admin', 'directivo', 'administrativo']}>
               <Payments />
             </RoleRoute>
           }
@@ -166,12 +155,7 @@ function AppRoutes() {
           path="/subjects"
           element={
             <RoleRoute
-              allowedRoles={[
-                'super_admin',
-                'directivo',
-                'administrativo',
-                'profesor',
-              ]}
+              allowedRoles={['super_admin', 'directivo', 'administrativo', 'profesor']}
             >
               <Subjects />
             </RoleRoute>
@@ -213,6 +197,26 @@ function AppRoutes() {
               ]}
             >
               <Announcements />
+            </RoleRoute>
+          }
+        />
+
+        {/* Horario */}
+        <Route
+          path="/schedule"
+          element={
+            <RoleRoute allowedRoles={['super_admin', 'directivo', 'administrativo']}>
+              <Schedule />
+            </RoleRoute>
+          }
+        />
+
+        {/* Calendario escolar */}
+        <Route
+          path="/calendar"
+          element={
+            <RoleRoute allowedRoles={['super_admin', 'directivo', 'administrativo']}>
+              <SchoolCalendar />
             </RoleRoute>
           }
         />
