@@ -9,6 +9,8 @@ import type { AppRole } from '@/types/supabase';
 // Pages
 import Login from '@/pages/Login';
 import SignUp from '@/pages/SignUp';
+import ResetPassword from '@/pages/ResetPassword';
+import ForgotPassword from '@/pages/ForgotPassword';
 import Dashboard from '@/pages/Dashboard';
 import Students from '@/pages/Students';
 import Payments from '@/pages/Payments';
@@ -76,6 +78,8 @@ function AppRoutes() {
       {/* Públicas */}
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<SignUp />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
 
       {/* Layout protegido */}
       <Route

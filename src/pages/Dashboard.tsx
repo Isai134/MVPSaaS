@@ -80,10 +80,15 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-8">
-      <h1 className="text-3xl font-bold">Panel</h1>
+      <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-6 text-white">
+        <h1 className="text-3xl font-bold mb-2">¡Bienvenido a tu Panel!</h1>
+        <p className="text-blue-100">
+          Aquí puedes ver un resumen de tu actividad académica y administrativa.
+        </p>
+      </div>
 
       {/* Statistics */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard label="Alumnos" value={loadingStudents ? '—' : studentsCount} />
         <StatCard label="Pagos" value={loadingPayments ? '—' : totalPayments} />
         <StatCard
@@ -97,7 +102,7 @@ export default function Dashboard() {
       </div>
 
       {/* Charts & tables */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <PaymentStatusChart summary={paymentsSummary ?? {}} />
         <RecentPaymentsTable payments={recentPayments ?? []} />
       </div>

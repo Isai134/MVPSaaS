@@ -8,7 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
  * simply shows the user's name and email.
  */
 export default function Profile() {
-  const { profile, isLoading } = useAuth();
+  const { profile, isLoading, roles } = useAuth();
   if (isLoading) return <p className="p-4">Cargando…</p>;
   if (!profile) return <p className="p-4">No se pudo cargar el perfil.</p>;
   return (
@@ -20,6 +20,9 @@ export default function Profile() {
         </p>
         <p>
           <strong>Correo:</strong> {profile.email}
+        </p>
+        <p>
+          <strong>Rol(es):</strong> {roles.join(', ')}
         </p>
       </div>
     </div>

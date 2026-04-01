@@ -29,6 +29,7 @@ type AuthContextType = {
     schoolId?: string | null,
   ) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
+  resetPassword: (email: string) => Promise<{ error: Error | null }>;
   hasRole: (role: AppRole) => boolean;
   isAdmin: boolean;
   isStaff: boolean;
@@ -216,6 +217,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setRoles([]);
   };
 
+  const resetPassword = async (email: string) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    return { error: error ?? null };
+  };
+
   const hasRole = (role: AppRole) => roles.includes(role);
 
   const isAdmin = useMemo(() => {
@@ -249,6 +257,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         signIn,
         signUp,
         signOut,
+        resetPassword,
         hasRole,
         isAdmin,
         isStaff,
